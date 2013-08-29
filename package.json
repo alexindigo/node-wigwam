@@ -1,0 +1,25 @@
+{
+  "name": "wigwam",
+  "version": "0.0.0",
+  "description": "A module for creating restful API servers and static file servers (with etags, caching, etc).",
+  "main": "index.js",
+  "scripts": {
+    "test": "tap ./test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/alexindigo/node-wigwam.git"
+  },
+  "keywords": [
+    "http",
+    "web",
+    "api",
+    "static",
+    "server"
+  ],
+  "author": "Alex Indigo <iam@alexindigo.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/alexindigo/node-wigwam/issues"
+  }
+}
