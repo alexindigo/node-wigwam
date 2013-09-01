@@ -4,7 +4,10 @@
   "description": "A module for creating restful API servers and static file servers (with etags, caching, etc).",
   "main": "index.js",
   "scripts": {
-    "test": "tap ./test"
+    "test": "./node_modules/.bin/tap test/*.js"
+  },
+  "engines": {
+    "node": ">= 0.8.0"
   },
   "repository": {
     "type": "git",
@@ -14,6 +17,7 @@
     "http",
     "web",
     "api",
+    "rest",
     "static",
     "server"
   ],
@@ -21,5 +25,13 @@
   "license": "MIT",
   "bugs": {
     "url": "https://github.com/alexindigo/node-wigwam/issues"
+  },
+  "devDependencies": {
+    "tap": "~0.4.4"
+  },
+  "dependencies": {
+    "mapleTree": "~0.5.0-1",
+    "st": "~0.2.1",
+    "primus": "~1.4.0"
   }
 }
