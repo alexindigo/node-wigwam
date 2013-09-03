@@ -8,9 +8,14 @@ it will take all your time to maintain teh thing with no clear advantage.
 Same with the webservers, it's easy to install all-included frameworks like express,
 but do you really need all of it's features all the time?
 
+
 ## Install
 
 ```
 $ npm install wigwam
 ```
+
+# Heavily under construction.
+
+Approach with caution.
 
