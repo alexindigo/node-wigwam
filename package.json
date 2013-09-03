@@ -32,6 +32,7 @@
   "dependencies": {
     "mapleTree": "~0.5.0-1",
     "st": "~0.2.1",
-    "primus": "~1.4.0"
+    "primus": "~1.4.0",
+    "deeply": "~0.1.0"
   }
 }

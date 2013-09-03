@@ -5,6 +5,7 @@ var path      = require('path')
   , http      = require('http') // not as server, but for misc use
 
   // thrid-party
+  , merge     = require('deeply')
   , st        = require('st')
   , MapleTree = require('mapleTree')
   , Primus    = require('primus')
@@ -298,35 +299,8 @@ Wigwam.prototype._requestParser = function Wigwam__requestParser(req, callback)
 
 // Santa's little helpers
 
-// Deep merges properties of the provided objects
-// latter will override former
-// returns untangled copy
-function merge(/* a[, b[, ...]] */)
-{
-  var o, prop, result = {};
-
-  while (o = Array.prototype.shift.call(arguments))
-  {
-    for (prop in o)
-    {
-      if (!o.hasOwnProperty(prop)) continue;
-
-      if (typeof o[prop] == 'object')
-      {
-        result[prop] = merge(result[prop] || {}, o[prop]);
-      }
-      else
-      {
-        result[prop] = o[prop];
-      }
-    }
-  }
-
-  return result;
-}
-
 // Removes duplicates from the list of arrays
-// TODO: So far it's only two functions like that,
+// TODO: So far it's only function like that,
 //       if we get more switch to lodash
 function unique(/* a[, b[, ...]]*/)
 {
