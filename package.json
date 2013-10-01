@@ -1,6 +1,6 @@
 {
   "name": "wigwam",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "A module for creating restful API servers and static file servers (with etags, caching, etc).",
   "main": "index.js",
   "scripts": {
@@ -18,6 +18,9 @@
     "web",
     "api",
     "rest",
+    "sockets",
+    "websockets",
+    "primus",
     "static",
     "server"
   ],
@@ -32,7 +35,8 @@
   "dependencies": {
     "mapleTree": "~0.5.0-1",
     "st": "~0.2.1",
-    "primus": "~1.4.0",
-    "deeply": "~0.1.0"
+    "primus": "~1.4.3",
+    "deeply": "~0.1.0",
+    "lodash": "~2.2.1"
   }
 }

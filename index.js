@@ -5,6 +5,7 @@ var path      = require('path')
   , http      = require('http') // not as server, but for misc use
 
   // thrid-party
+  , _         = require('lodash')
   , merge     = require('deeply')
   , st        = require('st')
   , MapleTree = require('mapleTree')
@@ -16,13 +17,14 @@ var path      = require('path')
       // default options for `st`atic files server
       static:
       {
-        url        : '/',
-        passthrough: true, // no 404 for files
-        index      : 'index.html',
-        content    :
+        url            : '/',
+        passthrough    : true, // no 404 for files
+        index          : 'index.html',
+        optionalHtmlExt: false,
+        content        :
         {
-          max      : 1024*1024*64, // memory limit for cache – 64Mb should be enough for everybody :)
-          maxAge   : 10*60*1000, // time limit for content cache – 10 minutes
+          max          : 1024*1024*64, // memory limit for cache – 64Mb should be enough for everybody :)
+          maxAge       : 10*60*1000, // time limit for content cache – 10 minutes
         }
       },
       // default options for the api server
@@ -32,7 +34,7 @@ var path      = require('path')
         contentType   : 'application/json',
         responseEncode: JSON.stringify,
         requestDecode : qs.parse
-        // TODO: Added decoder per content type
+        // TODO: Add decoder per content type
         // 'application/x-www-form-urlencoded' -> qs.parse
         // 'application/json' -> JSON.parse
         // 'multipart/form-data' -> Formidable ? user-land
@@ -86,22 +88,22 @@ function Wigwam(server, options)
   this._init();
 }
 
-// Setup methods
+// --- Setup methods
 
-// static files server setup
+// TODO: static files server setup
 Wigwam.prototype.static = function Wigwam_static(options)
 {
   return this;
 }
 
-// api server setup
+// TODO: api server setup
 Wigwam.prototype.api = function Wigwam_api(options)
 {
   return this;
 }
 
-// web sockets server setup
-Wigwam.prototype.websockets = function Wigwam_api(options)
+// TODO: web sockets server setup
+Wigwam.prototype.websockets = function Wigwam_websockets(options)
 {
   return this;
 }
@@ -113,47 +115,107 @@ Wigwam.prototype.listen = function Wigwam_listen(port, host)
   return this;
 }
 
-// API methods
+// --- API methods
 
+// Adds HTTP GET method to API
 Wigwam.prototype.get = function Wigwam_get(route, handler)
 {
   this._addRoute('get', route, handler);
   return this;
 }
 
+// Adds HTTP POST method to API
 Wigwam.prototype.post = function Wigwam_post(route, handler)
 {
   this._addRoute('post', route, handler);
   return this;
 }
 
+// Adds HTTP PUT method to API
 Wigwam.prototype.put = function Wigwam_put(route, handler)
 {
   this._addRoute('put', route, handler);
   return this;
 }
 
+// Adds HTTP DELETE method to API
 Wigwam.prototype.delete = function Wigwam_delete(route, handler)
 {
   this._addRoute('delete', route, handler);
   return this;
 }
 
+// --- Websockets (Primus) methods
+
+// TODO: Make it proper
+// TODO: throw up if no websocket instance defined?
+Wigwam.prototype.on = function Wigwam_on(event, handler)
+{
+  var i;
+
+  // check for empty strings
+  if (typeof event != 'string' || !(event = event.trim()))
+  {
+    return;
+  }
+
+  // check for multiply events
+  if (event.indexOf(' ') > 0)
+  {
+    event = event.trim().split(' ');
+    for (i=0; i<event.length; i++)
+    {
+      this.on(event[i], handler);
+    }
+    return;
+  }
+
+  if (!this.instance.events[event])
+  {
+    this.instance.events[event] = [];
+  }
+
+  this.instance.events[event].push(handler);
+
+  return this;
+}
 
 // Semi-private methods, not part of the public interface
 
 // creates submodules instances
 Wigwam.prototype._init = function Wigwam__init()
 {
-  // create static files server
-  this.instance.files = st(this.options.static);
+  // conditionally create static files server
+  if (this.options.static.path)
+  {
+    this.instance.files = st(this.options.static);
+  }
 
   // create api routing storage
   // separate routes per HTTP method
   this.instance.api = {};
 
+  // create websocket events routing table
+  this.instance.events = {};
+
   // attach to http server
   this.instance.server.on('request', this._requestHandler.bind(this));
+
+  // add websockets
+  if (this.options.websockets.transformer)
+  {
+    this.instance.websockets = new Primus(this.instance.server, this.options.websockets);
+
+    // update client library
+    if (this.options.websockets.clientLibrary)
+    {
+      this.instance.websockets.save(this.options.websockets.clientLibrary);
+    }
+
+    // listen for connections
+    this.instance.websockets.on('connection', this._websocketConnectionHandler.bind(this));
+  }
+
 }
 
 // Generic method for routes addition
@@ -184,7 +246,7 @@ Wigwam.prototype._requestHandler = function Wigwam__requestHandler(req, res)
     , match
     , host // host object for route method to be bound to
     // HEAD and GET available for static files
-    , allowedMethods = unique(['HEAD', 'GET'], Object.keys(this.instance.api))
+    , allowedMethods = _.uniq(['HEAD', 'GET'].concat(Object.keys(this.instance.api)))
     ;
 
   // check if response already finished
@@ -209,7 +271,7 @@ Wigwam.prototype._requestHandler = function Wigwam__requestHandler(req, res)
   }
 
   // check api router
-  if ((match = this.instance.api[req.method].match(req.url)).perfect)
+  if (this.instance.api[req.method] && (match = this.instance.api[req.method].match(req.url)).perfect)
   {
     // fill host object with useful stuff
     host =
@@ -236,11 +298,32 @@ Wigwam.prototype._requestHandler = function Wigwam__requestHandler(req, res)
   }
 
   // check for local files
-  this.instance.files(req, res, function Wigwam__requestHandler_fileNotFound()
+  if (this.instance.files)
+  {
+    this.instance.files(req, res, this._requestHandler_fileNotFound.bind(this, req, res));
+  }
+  else
   {
     // nothing
-    _wigman._responseHandler(res, 404); // Not Found
-  });
+    this._responseHandler(res, 404); // Not Found
+  }
+}
+
+// Handles File Not Found callback from static file server
+Wigwam.prototype._requestHandler_fileNotFound = function Wigwam__requestHandler_fileNotFound(req, res)
+{
+  // check if it's no extension html request
+  if (this.options.static.optionalHtmlExt && req.url.indexOf('.') == -1)
+  {
+    // try again with '.html'
+    req.url += '.html';
+    // try one more time
+    this.instance.files(req, res, this._requestHandler_fileNotFound.bind(this, req, res));
+    return;
+  }
+
+  // nothing
+  this._responseHandler(res, 404); // Not Found
 }
 
 // Handles response finishing touches
@@ -297,28 +380,57 @@ Wigwam.prototype._requestParser = function Wigwam__requestParser(req, callback)
   });
 }
 
-// Santa's little helpers
-
-// Removes duplicates from the list of arrays
-// TODO: So far it's only function like that,
-//       if we get more switch to lodash
-function unique(/* a[, b[, ...]]*/)
+// Handles websockets connections
+Wigwam.prototype._websocketConnectionHandler = function Wigwam__websocketConnectionHandler(spark)
 {
-  var i, a
-    , result = []
-    ;
+  var _wigwam = this;
 
-  // unique
-  while (a = Array.prototype.shift.call(arguments))
+  // check for custom connection events
+  if (_.isArray(this.instance.events['connection']))
   {
-    for (i=0; i<a.length; i++)
-    {
-      if (result.indexOf(a[i]) == -1)
-      {
-        result.push(a[i]);
-      }
-    }
+    _.invoke(this.instance.events['connection'], 'call', this.instance.websockets, spark, {connection: true});
   }
 
-  return result;
+  // check for custom disconnection events
+  if (_.isArray(this.instance.events['disconnection']))
+  {
+    spark.on('end', function Wigwam__websocketConnectionHandler_onEnd()
+    {
+      _.invoke(_wigwam.instance.events['disconnection'], 'call', _wigwam.instance.websockets, spark, {disconnection: true});
+    });
+  }
+
+  // check user wants to handle websocket events
+  // on "low" level – deal with data events manually
+  if (_.isArray(this.instance.events['data']))
+  {
+    spark.on('data', function Wigwam__websocketConnectionHandler_onData(data)
+    {
+      _.invoke(_wigwam.instance.events['data'], 'call', _wigwam.instance.websockets, spark, data);
+    });
+  }
+  else // or add some sugar
+  {
+    spark.on('data', this._websocketOnDataHandler.bind(this, spark));
+  }
+}
+
+// Handles websockets data events
+Wigwam.prototype._websocketOnDataHandler = function Wigwam__websocketOnDataHandler(socket, data)
+{
+  var event;
+
+  // only objects
+  if (typeof data != 'object') return;
+
+  for (event in data)
+  {
+    if (!data.hasOwnProperty(event)) continue;
+
+    // check for existing event handlers
+    if (_.isArray(this.instance.events[event]))
+    {
+      _.invoke(this.instance.events[event], 'call', this.instance.websockets, socket, data[event]);
+    }
+  }
 }
