@@ -60,51 +60,44 @@ function Wigwam(server, options)
   // keep reference to the server
   this.instance.server = server;
 
-  // shortcut for the empty options
-  if (!options)
-  {
-    this.options = defaults;
-  }
-  else
-  {
-    // {{{ override defaults with custom options
-    this.options = {};
-    // static files server
-    this.options.static = merge(defaults.static, options.static || {});
-    // api server
-    this.options.api = merge(defaults.api, options.api || {});
-    // websockets server
-    this.options.websockets = merge(defaults.websockets, options.websockets || {});
-    // }}}
+  // set defaults
+  this.options = merge(defaults);
 
-    // {{{ set convenience options
-    // static files local path
-    options.path && (this.options.static.path = options.path);
-    // api uri prefix
-    options.apiPath && (this.options.api.path = options.apiPath);
-    // }}}
-  }
+  // merge in custom options
+  this._mergeOptions(options);
 
   this._init();
+
+  // check for handlers in the options
+  this._takeHandlers();
 }
 
 // --- Setup methods
 
-// TODO: static files server setup
+// Static files server setup
 Wigwam.prototype.static = function Wigwam_static(options)
 {
+  // merge in custom options
+  this._mergeOptions({static: options});
+
   return this;
 }
 
-// TODO: api server setup
+// API server setup
 Wigwam.prototype.api = function Wigwam_api(options)
 {
+  // merge in custom options
+  this._mergeOptions({api: options});
+
   return this;
 }
 
-// TODO: web sockets server setup
+// Web sockets server setup
 Wigwam.prototype.websockets = function Wigwam_websockets(options)
 {
+  // merge in custom options
+  this._mergeOptions({websockets: options});
+
   return this;
 }
 
@@ -215,7 +208,74 @@ Wigwam.prototype._init = function Wigwam__init()
     // listen for connections
     this.instance.websockets.on('connection', this._websocketConnectionHandler.bind(this));
   }
+}
 
+// Merge provided options with existing ones
+Wigwam.prototype._mergeOptions = function Wigwam__mergeOptions(options)
+{
+  // for easier dealing with undefined
+  options = options || {};
+  this.options = this.options || {};
+
+  // static files server
+  this.options.static = merge(this.options.static, options.static || {});
+
+  // api server
+  this.options.api = merge(this.options.api, options.api || {});
+
+  // websockets server
+  this.options.websockets = merge(this.options.websockets, options.websockets || {});
+
+  // set convenience options
+  // static files local path
+  options.path && (this.options.static.path = options.path);
+  // api uri prefix
+  options.apiPath && (this.options.api.path = options.apiPath);
+}
+
+// Take handlers from options
+Wigwam.prototype._takeHandlers = function Wigwam__takeHandlers()
+{
+  // fetch api handlers
+  // method by method
+  if (this.options.api.get)
+  {
+    this._addApi('get', this.options.api.get);
+    delete this.options.api.get;
+  }
+  if (this.options.api.post)
+  {
+    this._addApi('post', this.options.api.post);
+    delete this.options.api.post;
+  }
+  if (this.options.api.put)
+  {
+    this._addApi('put', this.options.api.put);
+    delete this.options.api.put;
+  }
+  if (this.options.api.delete)
+  {
+    this._addApi('delete', this.options.api.delete);
+    delete this.options.api.delete;
+  }
+}
+
+// Add API handlers in a batch
+Wigwam.prototype._addApi = function Wigwam__addApi(method, handlers)
+{
+  var route;
+
+  if (!method || !handlers)
+  {
+    return;
+  }
+
+  for (route in handlers)
+  {
+    if (!handlers.hasOwnProperty(route)) continue;
+
+    this._addRoute(method, route, handlers[route]);
+  }
 }
 
 // Generic method for routes addition

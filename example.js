@@ -1,58 +1,56 @@
-var server = require('http').createServer()
-  , Wigwam = require('wigwam')
+var http = require('http')
+  , Wigwam = require('./index') // use require('wigwam') for real project
+  , publicDir = './public'
+  , wigwam
   ;
 
-var wigwam = new Wigwam(server, {path: './static'}).listen(1337);
+// Example 1. Simplest, static files only
+wigwam = new Wigwam(http.createServer(), {path: publicDir}).listen(11337);
+console.log('Listening on 11337');
 
 
-Wigwam(server,
+// Example 2. All in one
+Wigwam(http.createServer(),
 {
-  path       : './static',
-  apiPath    : '/api/v1',
-  transformer: 'ws',
-
   static:
   {
-    path: './static',
+    path: publicDir,
     url : '/'
   },
   api:
   {
-    path: '/api/v1',
+    path: '/api/v0',
     get:
     {
-      'hash/:hash': function()
+      'test/:test': function(params, callback)
       {
-
+        // successful response
+        callback(null, {method: 'get', port: 11338});
       }
     },
     post:
     {
-      'hash': function()
+      'test': function(params, callback)
       {
-
+        // successful response
+        callback(null, {method: 'post', port: 11338});
       },
     }
   },
   websockets:
   {
-    transformer: 'ws'
+    transformer: 'websockets'
   }
-}).listen(1337);
+}).listen(11338);
+console.log('Listening on 11338');
 
 
+// Example 3. Static + API + Websockets
+wigwam = new Wigwam(http.createServer());
 
 wigwam.static(
 {
-  path       : config.path,
-  // url        : '/',
-  // passthrough: true, // no 404 for files
-  // index      : config.index,
-  // content    :
-  // {
-  //   max      : 1024*1024*64, // memory limit for cache
-  //   maxAge   : 1000*60*10, // time limit for content cache
-  // }
+  path: publicDir
 });
 
 wigwam.api(
@@ -60,23 +58,29 @@ wigwam.api(
   path: '/api/v1',
   get:
   {
-    'hash/:hash': function()
+    'test/:test': function(params, callback)
     {
-
+      // unsuccessful response
+      callback({code: 500, error: 'for get', port: 11339});
     }
   },
   post:
   {
-    'hash': function()
+    'test': function(params, callback)
     {
-
+      // parse POST parameters
+      this.parseRequestBody(function(err, data)
+      {
+        // unsuccessful response
+        callback({code: 500, error: 'for post', port: 11339});
+      });
     }
   }
 });
 
 wigwam.websockets(
 {
-  transformer: 'ws'
+  transformer: 'websockets',
   events:
   {
     'hello': function()
@@ -86,19 +90,28 @@ wigwam.websockets(
   }
 });
 
-wigwam.listen(1337);
+wigwam.listen(11339);
+console.log('Listening on 11339');
 
 
-// verbose
+// Example 4. Verbose handlers
+wigwam = new Wigwam(http.createServer(), {apiPath: '/api', transformer: 'websockets'}).listen(11340);
+console.log('Listening on 11340');
 
-wigwam.get('hash/:hash', function()
+wigwam.get('test/:test', function(params, callback)
 {
-
+  // successful response
+  callback(null, {parameter: params.test, method: 'get', port: 11340});
 });
 
-wigwam.post('hash', function()
+wigwam.post('test', function(params, callback)
 {
-
+  // parse POST parameters
+  this.parseRequestBody(function(err, data)
+  {
+    // successful response
+    callback(null, {data: data, method: 'post', port: 11340});
+  });
 });
 
 wigwam.on('hello', function()

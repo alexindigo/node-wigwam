@@ -30,13 +30,14 @@
     "url": "https://github.com/alexindigo/node-wigwam/issues"
   },
   "devDependencies": {
-    "tap": "~0.4.4"
+    "tap": "~0.4.8",
+    "ws": "~0.4.31"
   },
   "dependencies": {
-    "mapleTree": "~0.5.0-1",
-    "st": "~0.2.1",
-    "primus": "~1.4.3",
+    "mapleTree": "~0.5.1",
+    "st": "~0.3.2",
+    "primus": "~2.0.4",
     "deeply": "~0.1.0",
-    "lodash": "~2.2.1"
+    "lodash": "~2.4.1"
   }
 }
