@@ -1,10 +1,11 @@
-var http = require('http')
-  , Wigwam = require('./index') // use require('wigwam') for real project
+var http      = require('http')
+  , path      = require('path')
+  , Wigwam    = require('./index') // use require('wigwam') for real project
   , publicDir = './public'
   , wigwam
   ;
 
-// Example 1. Simplest, static files only
+// Example 1. Simplest, static files only, no websockets
 wigwam = new Wigwam(http.createServer(), {path: publicDir}).listen(11337);
 console.log('Listening on 11337');
 
@@ -39,7 +40,22 @@ Wigwam(http.createServer(),
   },
   websockets:
   {
-    transformer: 'websockets'
+    transformer: 'websockets',
+    events:
+    {
+      'connection': function(socket)
+      {
+        console.log('connected to :11338');
+      },
+      'data': function(socket, data)
+      {
+        socket.write({echo: data, port: 11338});
+      },
+      'error': function(err)
+      {
+        console.error('Something horrible has happened', err, err.message);
+      }
+    }
   }
 }).listen(11338);
 console.log('Listening on 11338');
@@ -83,9 +99,13 @@ wigwam.websockets(
   transformer: 'websockets',
   events:
   {
-    'hello': function()
+    'connection': function(socket)
     {
-
+      console.log('connected to :11339');
+    },
+    'data': function(socket, data)
+    {
+      socket.write({echo: data, port: 11339});
     }
   }
 });
@@ -95,7 +115,7 @@ console.log('Listening on 11339');
 
 
 // Example 4. Verbose handlers
-wigwam = new Wigwam(http.createServer(), {apiPath: '/api', transformer: 'websockets'}).listen(11340);
+wigwam = new Wigwam(http.createServer(), {path: publicDir, apiPath: '/api', transformer: 'websockets'}).listen(11340);
 console.log('Listening on 11340');
 
 wigwam.get('test/:test', function(params, callback)
@@ -114,7 +134,19 @@ wigwam.post('test', function(params, callback)
   });
 });
 
-wigwam.on('hello', function()
+// multi-event
+wigwam.on('connection data', function(socket, data)
 {
+  if (data.connection)
+  {
+    console.log('connected to :11340');
+  }
 
+  socket.write({echo: data, port: 11340});
+});
+
+// listen for actual data
+wigwam.on('disconnection', function(socket)
+{
+  console.log('bye, bye');
 });

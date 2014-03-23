@@ -1,5 +1,5 @@
 .DS_Store
 *.sublime-*
-/node_modules/
-/test/tmp
-/sftp-config.json
+sftp-config.json
+node_modules/
+test/tmp

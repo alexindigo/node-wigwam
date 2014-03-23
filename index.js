@@ -80,6 +80,8 @@ Wigwam.prototype.static = function Wigwam_static(options)
   // merge in custom options
   this._mergeOptions({static: options});
 
+  this._setStatic(this.options.static);
+
   return this;
 }
 
@@ -88,6 +90,8 @@ Wigwam.prototype.api = function Wigwam_api(options)
 {
   // merge in custom options
   this._mergeOptions({api: options});
+  // retrieve handlers
+  this._takeHandlers();
 
   return this;
 }
@@ -97,6 +101,12 @@ Wigwam.prototype.websockets = function Wigwam_websockets(options)
 {
   // merge in custom options
   this._mergeOptions({websockets: options});
+
+  // reset websockets server
+  this._setWebsockets(this.options.websockets);
+
+  // retrieve handlers
+  this._takeHandlers();
 
   return this;
 }
@@ -179,9 +189,9 @@ Wigwam.prototype.on = function Wigwam_on(event, handler)
 Wigwam.prototype._init = function Wigwam__init()
 {
   // conditionally create static files server
-  if (this.options.static.path)
+  if (this.options.static && this.options.static.path)
   {
-    this.instance.files = st(this.options.static);
+    this._setStatic(this.options.static);
   }
 
   // create api routing storage
@@ -197,16 +207,7 @@ Wigwam.prototype._init = function Wigwam__init()
   // add websockets
   if (this.options.websockets.transformer)
   {
-    this.instance.websockets = new Primus(this.instance.server, this.options.websockets);
-
-    // update client library
-    if (this.options.websockets.clientLibrary)
-    {
-      this.instance.websockets.save(this.options.websockets.clientLibrary);
-    }
-
-    // listen for connections
-    this.instance.websockets.on('connection', this._websocketConnectionHandler.bind(this));
+    this._setWebsockets(this.options.websockets);
   }
 }
 
@@ -231,11 +232,16 @@ Wigwam.prototype._mergeOptions = function Wigwam__mergeOptions(options)
   options.path && (this.options.static.path = options.path);
   // api uri prefix
   options.apiPath && (this.options.api.path = options.apiPath);
+  // websockets transport
+  options.transformer && (this.options.websockets.transformer = options.transformer);
+
 }
 
 // Take handlers from options
 Wigwam.prototype._takeHandlers = function Wigwam__takeHandlers()
 {
+  var event;
+
   // fetch api handlers
   // method by method
   if (this.options.api.get)
@@ -258,9 +264,29 @@ Wigwam.prototype._takeHandlers = function Wigwam__takeHandlers()
     this._addApi('delete', this.options.api.delete);
     delete this.options.api.delete;
   }
+
+  // fetch websockets event handlers
+  if (this.options.websockets.events)
+  {
+    for (event in this.options.websockets.events)
+    {
+      if (!this.options.websockets.events.hasOwnProperty(event)) continue;
+      this.on(event, this.options.websockets.events[event]);
+    }
+    delete this.options.websockets.events;
+  }
 }
 
-// Add API handlers in a batch
+// Sets static files server
+Wigwam.prototype._setStatic = function Wigwam__setStatic(options)
+{
+  if (options)
+  {
+    this.instance.files = st(options);
+  }
+}
+
+// Adds API handlers in a batch
 Wigwam.prototype._addApi = function Wigwam__addApi(method, handlers)
 {
   var route;
@@ -277,6 +303,25 @@ Wigwam.prototype._addApi = function Wigwam__addApi(method, handlers)
     this._addRoute(method, route, handlers[route]);
   }
 }
+
+// Sets websockets server
+Wigwam.prototype._setWebsockets = function Wigwam__setWebsockets(options)
+{
+  if (options)
+  {
+    this.instance.websockets = new Primus(this.instance.server, options);
+
+    // update client library
+    if (options.clientLibrary)
+    {
+      this.instance.websockets.save(options.clientLibrary);
+    }
+
+    // listen for connections
+    this.instance.websockets.on('connection', this._websocketConnectionHandler.bind(this));
+  }
+}
+
 
 // Generic method for routes addition
 Wigwam.prototype._addRoute = function Wigwam__addRoute(method, route, handler)
