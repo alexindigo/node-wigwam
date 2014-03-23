@@ -15,86 +15,195 @@ but do you really need all of it's features all the time?
 $ npm install wigwam
 ```
 
-## Example
+## Examples
 
-```
-var server   = require('http').createServer()
-  , path     = require('path')
+Assume:
 
-  , Wigwam   = require('wigwam')
+```javascript
+var http      = require('http')
+  , path      = require('path')
 
-  , defaults =
-    { port : 8500
-    , path : 'static'
-    }
+  , Wigwam    = require('wigwam')
 
-  , serverOptions
-  , staticPath
+  , publicDir = './public'
+
+  , wigwam
   ;
+```
 
-// make it absolute path
-staticPath = path.join(__dirname, defaults.path);
 
-// web server options
-serverOptions =
+### 1. Simplest, static files only, no api, no websockets
+
+```javascript
+wigwam = new Wigwam(http.createServer(), {path: publicDir}).listen(11337);
+console.log('Listening on 11337');
+```
+
+### 2. All in one
+
+```javascript
+Wigwam(http.createServer(),
 {
-  path      : staticPath,
-  apiPath   : '/api/v1',
+  // static files
+  static:
+  {
+    path: publicDir,
+    url : '/'
+  },
+  // api endpoints
+  api:
+  {
+    path: '/api/v0',
+    get:
+    {
+      'test/:test': function(params, callback)
+      {
+        // successful response
+        callback(null, {method: 'get'});
+      }
+    },
+    post:
+    {
+      'test': function(params, callback)
+      {
+        // successful response
+        callback(null, {method: 'post'});
+      },
+    }
+  },
+  // websocket events
   websockets:
   {
-    transformer  : 'socket.io',
-    clientLibrary: path.join(staticPath, 'js/primus.js')
+    transformer: 'websockets',
+    events:
+    {
+      'connection': function(socket)
+      {
+        console.log('connected');
+      },
+      'data': function(socket, data)
+      {
+        socket.write({echo: data});
+      },
+      'error': function(err)
+      {
+        console.error('Something horrible has happened', err, err.message);
+      }
+    }
   }
-};
+}).listen(11338);
+console.log('Listening on 11338');
+```
 
-// init webserver
-wigwam = new Wigwam(server, serverOptions);
+### 3. Step-by-step, Static + API + Websockets
+```javascript
+// Create server instance
+wigwam = new Wigwam(http.createServer());
 
-// [POST method] creates new hash for the provided url
-wigwam.post('hash', function(params, callback)
+// Static files
+wigwam.static(
+{
+  path: publicDir
+});
+
+// API endpoints
+wigwam.api(
+{
+  path: '/api/v1',
+  get:
+  {
+    'test/:test': function(params, callback)
+    {
+      // unsuccessful response
+      callback({code: 500, error: 'for get'});
+    }
+  },
+  post:
+  {
+    'test': function(params, callback)
+    {
+      // parse POST parameters
+      this.parseRequestBody(function(err, data)
+      {
+        // unsuccessful response
+        callback({code: 500, error: 'for post'});
+      });
+    }
+  }
+});
+
+// Websocket events
+wigwam.websockets(
+{
+  transformer: 'websockets',
+  events:
+  {
+    'connection': function(socket)
+    {
+      console.log('connected to :11339');
+    },
+    'data': function(socket, data)
+    {
+      socket.write({echo: data, port: 11339});
+    }
+  }
+});
+
+// Start listening
+wigwam.listen(11339);
+console.log('Listening on 11339');
+```
+
+### 4. Verbose handlers
+```javascript
+// Start with server + settings
+wigwam = new Wigwam(http.createServer(),
+{
+  path: publicDir,
+  apiPath: '/api',
+  transformer: 'websockets'
+}).listen(11340);
+console.log('Listening on 11340');
+
+// GET endpoint
+wigwam.get('test/:test', function(params, callback)
+{
+  // successful response
+  callback(null, {parameter: params.test, method: 'get', port: 11340});
+});
+
+// POST endpoint
+wigwam.post('test', function(params, callback)
 {
   // parse POST parameters
-  this.parseRequestBody(function(err, params)
+  this.parseRequestBody(function(err, data)
   {
-    var hash;
-
-    // just pass error upstream
-    if (err) return callback(err);
-
-    // hash creating logic ...
-    hash = params.test;
-
-    // return hash
-    callback(null, {hash: hash});
+    // successful response
+    callback(null, {data: data, method: 'post', port: 11340});
   });
-
 });
 
-// [GET method] fetches long url based on hash
-wigwam.get('hash/:hash', function(params, callback)
+// combined events handler
+wigwam.on('connection data', function(socket, data)
 {
-  var url;
+  if (data.connection)
+  {
+    console.log('connected to :11340');
+  }
 
-  // url from hash fetching logic ...
-  url = params.hash;
-
-  // return hash
-  callback(null, {url: url});
+  socket.write({echo: data, port: 11340});
 });
 
-// process websocket (primus) events
-wigwam.on('data connection disconnection', function wigwam_onData(socket, data)
+// Single event handler
+wigwam.on('disconnection', function(socket)
 {
-  // listening for the events here ...
+  console.log('bye, bye');
 });
-
-// start web server
-wigwam.listen(defaults.port);
 
 ```
 
 ## TODO
 
-- More docs
-- Loose ends
+- Tests
+- Better docs
 
