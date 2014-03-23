@@ -1,6 +1,8 @@
 .DS_Store
 *.sublime-*
+example.js
 /node_modules/
+/public/
 /test/
 /.gitignore
 /.npmignore
