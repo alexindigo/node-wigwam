@@ -422,6 +422,8 @@ Wigwam.prototype._requestHandler_fileNotFound = function Wigwam__requestHandler_
   {
     // try again with '.html'
     req.url += '.html';
+    // hack on st's anti-hack
+    req.sturl += '.html';
     // try one more time
     this.instance.files(req, res, this._requestHandler_fileNotFound.bind(this, req, res));
     return;
