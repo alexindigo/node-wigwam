@@ -1,4 +1,5 @@
 # Wigwam
+[![Gitter](https://badges.gitter.im/Join Chat.svg)](https://gitter.im/alexindigo/node-wigwam?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
 A module for creating restful API servers and static file servers (with etags, caching, etc).
 
